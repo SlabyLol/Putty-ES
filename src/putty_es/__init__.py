@@ -2,11 +2,11 @@
 Putty-ES – Elite Server Setup & Management Framework
 
 Intelligent modular open-source tool for automated server provisioning,
-configuration management, and the powerful ppiRuler
-(Python Package Implementor Ruler).
+configuration management, ppiRuler (Python Package Implementor Ruler),
+and a modern GUI with animated startup.
 """
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 __author__ = "DarkFox Co. / SlabyLol"
 __license__ = "MIT"
 
