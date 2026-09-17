@@ -1,0 +1,64 @@
+# Example: Production Web Server configuration for Putty-ES
+# Usage: putty-es apply configs/example-webserver.yaml
+
+name: production-web
+description: Hardened web server with Nginx, Docker, and Python apps
+
+hosts:
+  - name: web-01
+    hostname: 192.168.1.10          # Change to your server IP / hostname
+    user: root
+    port: 22
+    # key: ~/.ssh/id_ed25519       # Prefer key-based authentication
+
+modules:
+  # Update system and install essential packages
+  - name: packages
+    action: install
+    packages:
+      - curl
+      - git
+      - htop
+      - vim
+      - ufw
+      - python3
+      - python3-pip
+      - python3-venv
+      - nginx
+      - certbot
+      - python3-certbot-nginx
+
+  # Python packages from PyPI
+  - name: pypi
+    packages:
+      - fastapi
+      - uvicorn[standard]
+      - gunicorn
+      - requests
+      - rich
+
+  # Firewall – only allow necessary ports
+  - name: firewall
+    enable: true
+    allow:
+      - 22/tcp
+      - 80/tcp
+      - 443/tcp
+
+  # System settings
+  - name: system
+    hostname: web-01
+    timezone: UTC
+    services:
+      - nginx
+
+  # Optional: Docker
+  - name: docker
+    install: true
+    images:
+      - nginx:alpine
+
+  # SSH hardening (run carefully – make sure you have key access!)
+  - name: ssh
+    harden: false                   # Set to true only after confirming key access
+    authorized_keys: []             # Add your public keys here

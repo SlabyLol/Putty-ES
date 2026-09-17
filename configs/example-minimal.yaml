@@ -1,0 +1,18 @@
+# Minimal Putty-ES configuration
+name: minimal-server
+
+hosts:
+  - name: server-01
+    hostname: 10.0.0.5
+    user: ubuntu
+    key: ~/.ssh/id_ed25519
+
+modules:
+  - name: packages
+    packages:
+      - curl
+      - git
+
+  - name: pypi
+    packages:
+      - requests
