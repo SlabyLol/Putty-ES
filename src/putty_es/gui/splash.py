@@ -14,6 +14,8 @@ try:
 except ImportError:
     import tkinter as ctk  # type: ignore
 
+from putty_es import __version__
+
 
 class SplashScreen:
     """Animated startup splash window."""
@@ -66,7 +68,7 @@ class SplashScreen:
 
         self.version_label = ctk.CTkLabel(
             frame,
-            text="v0.2.0  ·  ppiRuler included",
+            text=f"v{__version__}  ·  ppiRuler included",
             font=ctk.CTkFont(family="Segoe UI", size=11),
             text_color="#484f58",
         )
