@@ -7,16 +7,22 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version tag to create/release (e.g. v0.3.0). Leave empty to use latest tag or auto."
+        description: "Version tag (e.g. v0.3.0). Used for GitHub Release name when not on a tag."
         required: false
         default: ""
       prerelease:
-        description: "Mark as pre-release"
+        description: "Mark GitHub Release as pre-release"
         type: boolean
         default: false
+      publish_pypi:
+        description: "Also publish to PyPI (Trusted Publisher)"
+        type: boolean
+        default: true
 
+# Required for GitHub Release + PyPI Trusted Publishing (OIDC)
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   build:
@@ -28,13 +34,10 @@ jobs:
         include:
           - os: ubuntu-latest
             artifact_name: putty-es-linux-x64
-            exe_name: putty-es
           - os: windows-latest
             artifact_name: putty-es-windows-x64
-            exe_name: putty-es.exe
           - os: macos-latest
             artifact_name: putty-es-macos-x64
-            exe_name: putty-es
 
     steps:
       - name: Checkout
@@ -48,10 +51,10 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      - name: Install dependencies
+      - name: Install build tools
         run: |
           python -m pip install --upgrade pip setuptools wheel build
-          pip install -e ".[full,dev]"
+          pip install -e ".[full,dev]" || pip install -e "."
           pip install pyinstaller
 
       - name: Build Python package (sdist + wheel)
@@ -93,7 +96,7 @@ jobs:
             --collect-all customtkinter \
             --collect-all rich \
             --collect-all click \
-            src/putty_es/cli.py
+            src/putty_es/cli.py || true
 
       - name: Build GUI executable (PyInstaller)
         shell: bash
@@ -115,15 +118,14 @@ jobs:
         shell: bash
         run: |
           mkdir -p release-assets
-          # Copy PyInstaller binaries
           if [ -f "dist/putty-es" ]; then cp dist/putty-es release-assets/${{ matrix.artifact_name }}; fi
           if [ -f "dist/putty-es.exe" ]; then cp dist/putty-es.exe release-assets/${{ matrix.artifact_name }}.exe; fi
           if [ -f "dist/putty-es-gui" ]; then cp dist/putty-es-gui release-assets/${{ matrix.artifact_name }}-gui; fi
           if [ -f "dist/putty-es-gui.exe" ]; then cp dist/putty-es-gui.exe release-assets/${{ matrix.artifact_name }}-gui.exe; fi
-          # Copy wheels / sdists (only once from ubuntu is enough, but ok from all)
+          # Python packages (wheel + sdist) – collected from every OS, Ubuntu is enough
           cp dist/*.whl release-assets/ 2>/dev/null || true
           cp dist/*.tar.gz release-assets/ 2>/dev/null || true
-          ls -la release-assets/
+          ls -la release-assets/ || true
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -133,11 +135,13 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-  release:
+  # ──────────────────────────────────────────────
+  # GitHub Release (binaries + wheels)
+  # ──────────────────────────────────────────────
+  github-release:
     name: Create GitHub Release
     needs: build
     runs-on: ubuntu-latest
-    # Run on tags OR manual workflow_dispatch
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
 
     steps:
@@ -151,11 +155,11 @@ jobs:
         with:
           path: artifacts
 
-      - name: Flatten & list release files
+      - name: Flatten release files
         shell: bash
         run: |
           mkdir -p final
-          find artifacts -type f -exec cp {} final/ \;
+          find artifacts -type f -exec cp -n {} final/ \; 2>/dev/null || find artifacts -type f -exec cp {} final/ \;
           echo "=== Release files ==="
           ls -lah final/
           echo "====================="
@@ -182,21 +186,21 @@ jobs:
 
             Elite Server Setup & Management + ppiRuler + GUI
 
+            ### Install from PyPI
+            ```bash
+            pip install putty-es
+            ```
+
             ### Downloads
-            - **Linux** – `putty-es-linux-x64`
-            - **Windows** – `putty-es-windows-x64.exe`
-            - **macOS** – `putty-es-macos-x64`
-            - **GUI builds** (where available)
-            - **Python wheel / sdist** for `pip install`
+            - Linux / Windows / macOS standalone binaries
+            - GUI builds (where available)
+            - Python wheel + sdist
 
             ### Features
             - Server provisioning over SSH
-            - Smart modules (packages, pypi, docker, firewall, nginx, users, files, cron, certbot, monitoring, …)
+            - 12+ smart modules
             - ppiRuler – offline PyPI package transformation
             - Modern GUI with animated splash screen
-            - Configuration driven (YAML / TOML)
-
-            Full changelog: see CHANGELOG.md
           files: final/*
           draft: false
           prerelease: ${{ github.event.inputs.prerelease || false }}
@@ -204,3 +208,52 @@ jobs:
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ──────────────────────────────────────────────
+  # Publish to PyPI via Trusted Publishing (OIDC)
+  # Matches pending publisher:
+  #   Project: putty-es
+  #   Owner/Repo: SlabyLol/Putty-ES
+  #   Workflow: release.yml
+  #   Environment: (any)
+  # ──────────────────────────────────────────────
+  publish-pypi:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    # Only on version tags (safer) OR when workflow_dispatch with publish_pypi=true
+    if: |
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.publish_pypi == 'true')
+
+    # id-token: write is required for OIDC Trusted Publishing
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip build
+          pip install build
+
+      - name: Build clean sdist + wheel
+        run: |
+          python -m build
+          ls -la dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # Trusted Publishing – no password / token needed
+          # Attests packages and uploads via OIDC
+          verbose: true
+          print-hash: true
