@@ -1,0 +1,96 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "putty-es"
+version = "0.1.0"
+description = "Putty-ES: Elite Server Setup & Management Tool – Intelligent modular framework for automated server provisioning, configuration, and PyPI package management."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "DarkFox Co.", email = "darkfox-to@proton.me"},
+]
+maintainers = [
+    {name = "SlabyLol", email = "darkfox-to@proton.me"},
+]
+keywords = [
+    "server",
+    "setup",
+    "provisioning",
+    "configuration",
+    "ssh",
+    "devops",
+    "automation",
+    "pypi",
+    "modules",
+    "putty",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: System :: Systems Administration",
+    "Topic :: System :: Installation/Setup",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "click>=8.1.0",
+    "rich>=13.0.0",
+    "pyyaml>=6.0",
+    "tomli>=2.0.0; python_version < '3.11'",
+    "paramiko>=3.0.0",
+    "fabric>=3.0.0",
+    "pydantic>=2.0.0",
+    "typing-extensions>=4.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov",
+    "black",
+    "ruff",
+    "mypy",
+]
+full = [
+    "docker>=7.0.0",
+    "invoke>=2.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/SlabyLol/Putty-ES"
+Documentation = "https://github.com/SlabyLol/Putty-ES#readme"
+Repository = "https://github.com/SlabyLol/Putty-ES"
+Issues = "https://github.com/SlabyLol/Putty-ES/issues"
+
+[project.scripts]
+putty-es = "putty_es.cli:main"
+puttyes = "putty_es.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+putty_es = ["configs/*.yaml", "configs/*.toml"]
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
