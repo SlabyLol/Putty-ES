@@ -1,0 +1,35 @@
+# Docker host example
+name: docker-swarm-node
+description: Docker-ready host with monitoring
+
+hosts:
+  - name: docker-01
+    hostname: 10.0.0.30
+    user: ubuntu
+    key: ~/.ssh/id_ed25519
+
+modules:
+  - name: packages
+    packages: [curl, git, htop, ca-certificates]
+
+  - name: docker
+    install: true
+    images:
+      - traefik:v3.0
+      - portainer/portainer-ce
+    containers:
+      - name: portainer
+        image: portainer/portainer-ce
+        ports: ["9000:9000"]
+        restart: unless-stopped
+
+  - name: firewall
+    enable: true
+    allow:
+      - 22/tcp
+      - 80/tcp
+      - 443/tcp
+      - 9000/tcp
+
+  - name: monitoring
+    tools: [htop, iotop, nethogs]

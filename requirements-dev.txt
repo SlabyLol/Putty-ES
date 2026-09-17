@@ -1,0 +1,9 @@
+-r requirements.txt
+pytest>=7.0
+pytest-cov
+black
+ruff
+mypy
+build
+wheel
+pyinstaller>=6.0.0

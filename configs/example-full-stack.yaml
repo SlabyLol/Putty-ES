@@ -1,0 +1,101 @@
+# Full-stack production example for Putty-ES
+name: full-stack-production
+description: Complete web + app + SSL + monitoring setup
+
+hosts:
+  - name: app-01
+    hostname: 203.0.113.10
+    user: root
+    port: 22
+    key: ~/.ssh/id_ed25519
+
+modules:
+  - name: packages
+    action: install
+    packages:
+      - curl
+      - git
+      - htop
+      - vim
+      - ufw
+      - nginx
+      - python3
+      - python3-pip
+      - python3-venv
+      - certbot
+      - python3-certbot-nginx
+
+  - name: users
+    groups: [deploy, docker]
+    users:
+      - name: deploy
+        shell: /bin/bash
+        groups: [deploy, sudo]
+        sudo: true
+        ssh_keys: []   # add your public keys
+
+  - name: firewall
+    enable: true
+    allow:
+      - 22/tcp
+      - 80/tcp
+      - 443/tcp
+
+  - name: system
+    hostname: app-01
+    timezone: UTC
+    services: [nginx]
+
+  - name: nginx
+    install: true
+    remove_default: true
+    sites:
+      - name: app
+        server_name: app.example.com
+        listen: 80
+        proxy_pass: http://127.0.0.1:8000
+
+  - name: pypi
+    packages:
+      - fastapi
+      - uvicorn[standard]
+      - gunicorn
+
+  - name: docker
+    install: true
+    images:
+      - nginx:alpine
+
+  - name: certbot
+    install: true
+    email: admin@example.com
+    domains:
+      - app.example.com
+    nginx: true
+
+  - name: monitoring
+    tools: [htop, iotop, ncdu, sysstat]
+    node_exporter: false
+
+  - name: cron
+    jobs:
+      - name: daily-health
+        user: root
+        schedule: "0 6 * * *"
+        command: "/usr/local/bin/putty-es-health >> /var/log/putty-es-health.log 2>&1"
+
+  - name: files
+    directories:
+      - path: /var/www/app
+        mode: "755"
+        owner: deploy
+      - path: /var/log/app
+        mode: "755"
+        owner: deploy
+    files:
+      - path: /var/www/app/index.html
+        mode: "644"
+        content: |
+          <!DOCTYPE html>
+          <html><head><title>Putty-ES</title></head>
+          <body><h1>Deployed by Putty-ES</h1></body></html>

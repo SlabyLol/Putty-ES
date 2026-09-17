@@ -1,0 +1,37 @@
+# Database server example
+name: database-server
+description: Hardened database host
+
+hosts:
+  - name: db-01
+    hostname: 10.0.0.20
+    user: root
+    key: ~/.ssh/id_ed25519
+
+modules:
+  - name: packages
+    packages:
+      - postgresql
+      - postgresql-contrib
+      - htop
+      - ufw
+
+  - name: firewall
+    enable: true
+    allow:
+      - 22/tcp
+      - 5432/tcp
+
+  - name: system
+    hostname: db-01
+    timezone: UTC
+    services: [postgresql]
+
+  - name: users
+    users:
+      - name: dbadmin
+        groups: [sudo]
+        sudo: true
+
+  - name: monitoring
+    tools: [htop, sysstat, ncdu]
