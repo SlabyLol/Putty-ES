@@ -1,0 +1,85 @@
+name: Build & Release Putty-ES + ppiRuler
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g. 0.1.0)"
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install pyinstaller build wheel
+
+      - name: Build package (sdist + wheel)
+        run: python -m build
+
+      - name: Build standalone executable with PyInstaller
+        run: |
+          pyinstaller --onefile --name putty-es --clean \
+            --hidden-import=putty_es \
+            --hidden-import=putty_es.ppi_ruler \
+            --hidden-import=putty_es.ppi_ruler.core \
+            --hidden-import=putty_es.ppi_ruler.builder \
+            --hidden-import=putty_es.ppi_ruler.animator \
+            src/putty_es/cli.py
+        shell: bash
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: putty-es-${{ matrix.os }}
+          path: |
+            dist/
+            *.whl
+            *.tar.gz
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            artifacts/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

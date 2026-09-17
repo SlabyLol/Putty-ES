@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "putty-es"
-version = "0.1.0"
-description = "Putty-ES: Elite Server Setup & Management Tool – Intelligent modular framework for automated server provisioning, configuration, and PyPI package management."
+version = "0.2.0"
+description = "Putty-ES: Elite Server Setup & Management Tool + ppiRuler (Python Package Implementor Ruler) – Intelligent modular framework for automated server provisioning, configuration, and offline PyPI package transformation."
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
@@ -26,6 +26,9 @@ keywords = [
     "pypi",
     "modules",
     "putty",
+    "ppiruler",
+    "offline",
+    "pyinstaller",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -61,10 +64,13 @@ dev = [
     "black",
     "ruff",
     "mypy",
+    "build",
+    "wheel",
 ]
 full = [
     "docker>=7.0.0",
     "invoke>=2.0.0",
+    "pyinstaller>=6.0.0",
 ]
 
 [project.urls]

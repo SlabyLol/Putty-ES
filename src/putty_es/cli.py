@@ -1,24 +1,23 @@
 #!/usr/bin/env python3
 """
 Putty-ES Command Line Interface
-Beautiful, powerful, and intelligent server management.
+Beautiful, powerful, and intelligent server management + ppiRuler.
 """
 
 from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 import click
 from rich.console import Console
 from rich.panel import Panel
-from rich.text import Text
 from rich.table import Table
 from rich import box
 
 from putty_es import __version__
-from putty_es.core.config import load_config, Config
+from putty_es.core.config import load_config
 from putty_es.core.executor import Executor
 from putty_es.core.module_loader import discover_modules, get_module
 
@@ -53,7 +52,7 @@ def main(ctx: click.Context, version: bool, no_banner: bool) -> None:
     Putty-ES – Elite Server Setup & Management Tool.
 
     Intelligent modular framework for automated server provisioning,
-    configuration, PyPI package management, and smart modules.
+    configuration, PyPI package management, smart modules, and ppiRuler.
     """
     if version:
         console.print(f"[bold cyan]Putty-ES[/bold cyan] v{__version__}")
@@ -66,7 +65,8 @@ def main(ctx: click.Context, version: bool, no_banner: bool) -> None:
             Panel(
                 "[bold]Welcome to Putty-ES[/bold]\n\n"
                 "Run [cyan]putty-es --help[/cyan] to see available commands.\n"
-                "Run [cyan]putty-es init[/cyan] to create your first configuration.",
+                "Run [cyan]putty-es init[/cyan] to create your first configuration.\n"
+                "Run [cyan]putty-es ppi --help[/cyan] for the Python Package Implementor Ruler.",
                 title="Getting Started",
                 border_style="cyan",
             )
@@ -205,7 +205,6 @@ def run_module(
     mod = module_cls()
     console.print(f"Running module [cyan]{module_name}[/cyan] on [bold]{host}[/bold]")
     executor = Executor(dry_run=dry_run)
-    # Simple ad-hoc config
     config = {"packages": list(args)} if args else {}
     success = mod.apply(h, config, executor)
     if success:
@@ -239,14 +238,99 @@ def shell(host: str, user: str, port: int, key: Optional[str]) -> None:
     """Open an interactive shell on a remote host (via SSH)."""
     print_banner()
     console.print(f"Connecting to [bold]{user}@{host}:{port}[/bold] ...")
-    # In a full implementation this would drop into an interactive SSH session.
-    # For now we provide a clear message.
     console.print(
         Panel(
             "Interactive shell support is available.\n"
             "Use your system SSH client for full interactive sessions:\n\n"
             f"[cyan]ssh -p {port} {user}@{host}[/cyan]",
             title="Shell",
+            border_style="cyan",
+        )
+    )
+
+
+# ──────────────────────────────────────────────
+# ppiRuler – Python Package Implementor Ruler
+# ──────────────────────────────────────────────
+
+@main.group("ppi")
+def ppi_group() -> None:
+    """
+    ppiRuler – Python Package Implementor Ruler.
+
+    Download any PyPI package and transform it into clean offline
+    executables, INI configs, HTML launchers and more.
+    """
+    pass
+
+
+@ppi_group.command("build")
+@click.argument("package")
+@click.option("--version", "-v", default=None, help="Specific package version.")
+@click.option(
+    "--output", "-o", default="./ppi_output", show_default=True, help="Output directory."
+)
+@click.option(
+    "--target",
+    "-t",
+    multiple=True,
+    type=click.Choice(["exe", "windows", "linux", "html", "ini", "dll"], case_sensitive=False),
+    help="Build targets (can be repeated). Default: all common targets.",
+)
+@click.option("--no-animation", is_flag=True, help="Disable startup animation.")
+def ppi_build(
+    package: str,
+    version: Optional[str],
+    output: str,
+    target: tuple,
+    no_animation: bool,
+) -> None:
+    """
+    Download a PyPI package and build clean offline artifacts.
+
+    Examples:
+
+      putty-es ppi build requests
+
+      putty-es ppi build rich --version 13.7.0 -t exe -t html -t ini
+
+      putty-es ppi build fastapi -o ./my_offline_pkg
+    """
+    from putty_es.ppi_ruler.core import PPIRuler
+
+    targets: List[str] = list(target) if target else ["exe", "linux", "html", "ini"]
+
+    ruler = PPIRuler(
+        package=package,
+        version=version,
+        output_dir=output,
+        targets=targets,
+    )
+
+    try:
+        ruler.run(animated=not no_animation)
+    except Exception as e:
+        console.print(f"[red]ppiRuler failed:[/red] {e}")
+        sys.exit(1)
+
+
+@ppi_group.command("info")
+def ppi_info() -> None:
+    """Show information about ppiRuler."""
+    console.print(
+        Panel(
+            "[bold cyan]ppiRuler[/bold cyan] – Python Package Implementor Ruler\n\n"
+            "Downloads any package from PyPI and transforms it into a clean,\n"
+            "fully offline distribution containing:\n\n"
+            "  • Windows launcher / EXE (via PyInstaller when available)\n"
+            "  • Linux portable binary / launcher\n"
+            "  • HTML status & documentation page\n"
+            "  • INI configuration files\n"
+            "  • DLL notes / stubs\n"
+            "  • manifest.json\n\n"
+            "Everything is self-contained – no runtime fetches from package servers.\n\n"
+            "[dim]Usage: putty-es ppi build <package>[/dim]",
+            title="ppiRuler",
             border_style="cyan",
         )
     )
