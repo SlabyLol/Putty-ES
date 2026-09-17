@@ -1,4 +1,4 @@
-name: Build & Release Putty-ES + ppiRuler
+name: Build & Release Putty-ES
 
 on:
   push:
@@ -7,79 +7,200 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to release (e.g. 0.1.0)"
+        description: "Version tag to create/release (e.g. v0.3.0). Leave empty to use latest tag or auto."
         required: false
+        default: ""
+      prerelease:
+        description: "Mark as pre-release"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
 
 jobs:
   build:
-    name: Build on ${{ matrix.os }}
+    name: Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            artifact_name: putty-es-linux-x64
+            exe_name: putty-es
+          - os: windows-latest
+            artifact_name: putty-es-windows-x64
+            exe_name: putty-es.exe
+          - os: macos-latest
+            artifact_name: putty-es-macos-x64
+            exe_name: putty-es
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Set up Python
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
-          pip install pyinstaller build wheel
+          python -m pip install --upgrade pip setuptools wheel build
+          pip install -e ".[full,dev]"
+          pip install pyinstaller
 
-      - name: Build package (sdist + wheel)
+      - name: Build Python package (sdist + wheel)
         run: python -m build
 
-      - name: Build standalone executable with PyInstaller
+      - name: Build CLI executable (PyInstaller)
+        shell: bash
         run: |
-          pyinstaller --onefile --name putty-es --clean \
+          pyinstaller --onefile --clean --noconfirm \
+            --name putty-es \
+            --paths src \
             --hidden-import=putty_es \
+            --hidden-import=putty_es.cli \
+            --hidden-import=putty_es.core \
+            --hidden-import=putty_es.core.config \
+            --hidden-import=putty_es.core.executor \
+            --hidden-import=putty_es.core.module_loader \
+            --hidden-import=putty_es.modules \
+            --hidden-import=putty_es.modules.base \
+            --hidden-import=putty_es.modules.packages \
+            --hidden-import=putty_es.modules.pypi \
+            --hidden-import=putty_es.modules.docker \
+            --hidden-import=putty_es.modules.firewall \
+            --hidden-import=putty_es.modules.system \
+            --hidden-import=putty_es.modules.ssh \
+            --hidden-import=putty_es.modules.nginx \
+            --hidden-import=putty_es.modules.users \
+            --hidden-import=putty_es.modules.files \
+            --hidden-import=putty_es.modules.cron \
+            --hidden-import=putty_es.modules.certbot \
+            --hidden-import=putty_es.modules.monitoring \
             --hidden-import=putty_es.ppi_ruler \
             --hidden-import=putty_es.ppi_ruler.core \
             --hidden-import=putty_es.ppi_ruler.builder \
             --hidden-import=putty_es.ppi_ruler.animator \
+            --hidden-import=putty_es.gui \
+            --hidden-import=putty_es.gui.app \
+            --hidden-import=putty_es.gui.splash \
+            --collect-all customtkinter \
+            --collect-all rich \
+            --collect-all click \
             src/putty_es/cli.py
-        shell: bash
 
-      - name: Upload artifacts
+      - name: Build GUI executable (PyInstaller)
+        shell: bash
+        run: |
+          pyinstaller --onefile --clean --noconfirm --windowed \
+            --name putty-es-gui \
+            --paths src \
+            --hidden-import=putty_es \
+            --hidden-import=putty_es.gui \
+            --hidden-import=putty_es.gui.app \
+            --hidden-import=putty_es.gui.splash \
+            --hidden-import=putty_es.ppi_ruler \
+            --hidden-import=putty_es.core \
+            --collect-all customtkinter \
+            --collect-all rich \
+            src/putty_es/gui/app.py || true
+
+      - name: Prepare artifact folder
+        shell: bash
+        run: |
+          mkdir -p release-assets
+          # Copy PyInstaller binaries
+          if [ -f "dist/putty-es" ]; then cp dist/putty-es release-assets/${{ matrix.artifact_name }}; fi
+          if [ -f "dist/putty-es.exe" ]; then cp dist/putty-es.exe release-assets/${{ matrix.artifact_name }}.exe; fi
+          if [ -f "dist/putty-es-gui" ]; then cp dist/putty-es-gui release-assets/${{ matrix.artifact_name }}-gui; fi
+          if [ -f "dist/putty-es-gui.exe" ]; then cp dist/putty-es-gui.exe release-assets/${{ matrix.artifact_name }}-gui.exe; fi
+          # Copy wheels / sdists (only once from ubuntu is enough, but ok from all)
+          cp dist/*.whl release-assets/ 2>/dev/null || true
+          cp dist/*.tar.gz release-assets/ 2>/dev/null || true
+          ls -la release-assets/
+
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: putty-es-${{ matrix.os }}
-          path: |
-            dist/
-            *.whl
-            *.tar.gz
+          name: ${{ matrix.artifact_name }}
+          path: release-assets/
+          if-no-files-found: warn
+          retention-days: 14
 
   release:
     name: Create GitHub Release
     needs: build
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
+    # Run on tags OR manual workflow_dispatch
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      - name: Create Release
+      - name: Flatten & list release files
+        shell: bash
+        run: |
+          mkdir -p final
+          find artifacts -type f -exec cp {} final/ \;
+          echo "=== Release files ==="
+          ls -lah final/
+          echo "====================="
+
+      - name: Determine tag name
+        id: tag
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          elif [[ -n "${{ github.event.inputs.version }}" ]]; then
+            echo "name=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "name=v0.3.0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          name: Putty-ES ${{ steps.tag.outputs.name }}
+          body: |
+            ## Putty-ES ${{ steps.tag.outputs.name }}
+
+            Elite Server Setup & Management + ppiRuler + GUI
+
+            ### Downloads
+            - **Linux** – `putty-es-linux-x64`
+            - **Windows** – `putty-es-windows-x64.exe`
+            - **macOS** – `putty-es-macos-x64`
+            - **GUI builds** (where available)
+            - **Python wheel / sdist** for `pip install`
+
+            ### Features
+            - Server provisioning over SSH
+            - Smart modules (packages, pypi, docker, firewall, nginx, users, files, cron, certbot, monitoring, …)
+            - ppiRuler – offline PyPI package transformation
+            - Modern GUI with animated splash screen
+            - Configuration driven (YAML / TOML)
+
+            Full changelog: see CHANGELOG.md
+          files: final/*
+          draft: false
+          prerelease: ${{ github.event.inputs.prerelease || false }}
           generate_release_notes: true
-          files: |
-            artifacts/**/*
+          fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
