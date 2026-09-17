@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "putty-es"
-version = "0.2.0"
-description = "Putty-ES: Elite Server Setup & Management Tool + ppiRuler (Python Package Implementor Ruler) – Intelligent modular framework for automated server provisioning, configuration, and offline PyPI package transformation."
+version = "0.3.0"
+description = "Putty-ES: Elite Server Setup & Management Tool + ppiRuler + modern GUI – Intelligent modular framework for automated server provisioning, configuration, and offline PyPI package transformation."
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
@@ -16,23 +16,15 @@ maintainers = [
     {name = "SlabyLol", email = "darkfox-to@proton.me"},
 ]
 keywords = [
-    "server",
-    "setup",
-    "provisioning",
-    "configuration",
-    "ssh",
-    "devops",
-    "automation",
-    "pypi",
-    "modules",
-    "putty",
-    "ppiruler",
-    "offline",
-    "pyinstaller",
+    "server", "setup", "provisioning", "configuration", "ssh", "devops",
+    "automation", "pypi", "modules", "putty", "ppiruler", "offline",
+    "pyinstaller", "gui", "customtkinter",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
+    "Environment :: Win32 (MS Windows)",
+    "Environment :: X11 Applications",
     "Intended Audience :: Developers",
     "Intended Audience :: System Administrators",
     "License :: OSI Approved :: MIT License",
@@ -55,6 +47,7 @@ dependencies = [
     "fabric>=3.0.0",
     "pydantic>=2.0.0",
     "typing-extensions>=4.0.0",
+    "customtkinter>=5.2.0",
 ]
 
 [project.optional-dependencies]
@@ -82,6 +75,7 @@ Issues = "https://github.com/SlabyLol/Putty-ES/issues"
 [project.scripts]
 putty-es = "putty_es.cli:main"
 puttyes = "putty_es.cli:main"
+putty-es-gui = "putty_es.gui.app:launch_gui"
 
 [tool.setuptools.packages.find]
 where = ["src"]

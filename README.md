@@ -10,31 +10,29 @@
                     Elite Server Setup & Management
 ```
 
-**Putty-ES** is a modern, intelligent, modular open-source framework for automated server provisioning, configuration management, remote administration **and** the powerful **ppiRuler** (Python Package Implementor Ruler).
+**Putty-ES** is a modern, intelligent, modular open-source framework for automated server provisioning, configuration management, remote administration, **ppiRuler** and a beautiful **GUI with animated startup**.
 
 ## Features
 
 ### Core Server Management
-- **Smart Modular Architecture** – Plugin-based modules that can be extended infinitely
-- **Configuration-Driven** – Define entire server fleets with YAML or TOML
-- **PyPI Native** – First-class support for installing Python packages on remote servers
-- **Beautiful CLI** – Rich terminal UI with banners, progress bars and colored output
-- **SSH-First** – Secure remote execution
-- **Idempotent Operations** – Safe to run multiple times
+- Smart modular architecture (plugin-based)
+- Configuration-driven (YAML / TOML)
+- Native PyPI support on remote servers
+- Beautiful CLI with banners & colors
+- SSH-first, idempotent operations
 
 ### ppiRuler – Python Package Implementor Ruler
-- Download **any** package from PyPI
-- Transform it into a **completely offline** distribution
-- Generate clean artifacts:
-  - Windows EXE / portable launcher (PyInstaller)
-  - Linux binary / shell launcher
-  - HTML status & documentation page (with animation)
-  - INI configuration files
-  - DLL notes / stubs
-  - `manifest.json`
-- Beautiful animated startup sequence
-- Clean installer-style progress
-- Auto-release pipeline with GitHub Actions + PyInstaller
+- Download any package from PyPI
+- Transform into completely offline distribution
+- Windows EXE / launcher, Linux binary, HTML page, INI configs, DLL notes
+- Animated terminal startup sequence
+
+### Modern GUI
+- **Animated splash screen** on every program start
+- Dark professional theme (CustomTkinter)
+- Tabs for Server Management + ppiRuler + About
+- One-click offline package building
+- Live log output
 
 ## Installation
 
@@ -50,85 +48,59 @@ cd Putty-ES
 pip install -e .
 ```
 
-## Quick Start – Server Management
+## Launch the GUI (with animated startup)
+
+```bash
+putty-es --gui
+# or
+putty-es gui
+# or
+putty-es-gui
+```
+
+When you start the program a clean animated splash screen appears, then the main window opens.
+
+## CLI Quick Start
 
 ```bash
 putty-es --help
 putty-es init
 putty-es apply configs/example-webserver.yaml
+putty-es ppi build requests
 putty-es modules
 ```
 
-## Quick Start – ppiRuler
+## ppiRuler Examples
 
 ```bash
-# Build an offline package of "requests"
 putty-es ppi build requests
-
-# Specific version + selected targets
 putty-es ppi build rich --version 13.7.1 -t exe -t html -t ini -o ./offline-rich
-
-# Show info
 putty-es ppi info
 ```
-
-After running, you will find a clean folder structure:
-
-```
-ppi_output/
-├── windows/          # .bat launcher or .exe + package/
-├── linux/            # shell launcher + package/
-├── html/             # beautiful index.html status page
-├── config/           # .ini files
-└── manifest.json
-```
-
-Everything is self-contained – no network calls to PyPI at runtime.
 
 ## Architecture
 
 ```
 putty_es/
-├── cli.py                 # Main CLI + ppi commands
+├── cli.py                 # CLI + --gui flag
 ├── core/                  # Config, Executor, Module loader
 ├── modules/               # Smart server modules
-│   ├── packages.py
-│   ├── pypi.py
-│   ├── docker.py
-│   ├── firewall.py
-│   ├── system.py
-│   └── ssh.py
-└── ppi_ruler/             # Python Package Implementor Ruler
-    ├── core.py            # Main engine
-    ├── builder.py         # Multi-target builder
-    └── animator.py        # Clean animations
+├── ppi_ruler/             # Offline package engine
+│   ├── core.py
+│   ├── builder.py
+│   └── animator.py        # Terminal animations
+└── gui/                   # Graphical interface
+    ├── splash.py          # Animated startup splash
+    └── app.py             # Main window (tabs)
 ```
 
-## Creating Custom Modules
+## Auto Release
 
-```python
-from putty_es.modules.base import BaseModule
-
-class MySmartModule(BaseModule):
-    name = "my-module"
-    description = "Does something very smart"
-
-    def apply(self, host, config, executor):
-        executor.run(host, "echo 'Hello from Putty-ES'")
-        return True
-```
-
-## Auto Release (GitHub Actions)
-
-Tag a version and the workflow automatically:
-
-1. Builds wheels & sdists
-2. Creates standalone executables with **PyInstaller** on Linux, Windows and macOS
-3. Uploads everything as a GitHub Release
+Tag a version → GitHub Actions builds wheels, sdists and PyInstaller executables for Linux / Windows / macOS and creates a Release.
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.3.0
+git push origin v0.3.0
 ```
 
 ## License
@@ -137,4 +109,4 @@ MIT License – free for personal and commercial use.
 
 ---
 
-**Putty-ES** + **ppiRuler** – Because server setup and package distribution should be elegant, intelligent and completely offline-ready.
+**Putty-ES** – Server setup, offline packages and a polished GUI with real startup animation.

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Putty-ES Command Line Interface
-Beautiful, powerful, and intelligent server management + ppiRuler.
+Beautiful, powerful, and intelligent server management + ppiRuler + GUI.
 """
 
 from __future__ import annotations
@@ -46,17 +46,23 @@ def print_banner() -> None:
 @click.group(invoke_without_command=True)
 @click.option("--version", "-V", is_flag=True, help="Show version and exit.")
 @click.option("--no-banner", is_flag=True, help="Suppress the startup banner.")
+@click.option("--gui", is_flag=True, help="Launch the graphical user interface.")
 @click.pass_context
-def main(ctx: click.Context, version: bool, no_banner: bool) -> None:
+def main(ctx: click.Context, version: bool, no_banner: bool, gui: bool) -> None:
     """
     Putty-ES – Elite Server Setup & Management Tool.
 
     Intelligent modular framework for automated server provisioning,
-    configuration, PyPI package management, smart modules, and ppiRuler.
+    configuration, PyPI package management, smart modules, ppiRuler and GUI.
     """
     if version:
         console.print(f"[bold cyan]Putty-ES[/bold cyan] v{__version__}")
         sys.exit(0)
+
+    if gui:
+        from putty_es.gui.app import launch_gui
+        launch_gui()
+        return
 
     if ctx.invoked_subcommand is None:
         if not no_banner:
@@ -65,12 +71,20 @@ def main(ctx: click.Context, version: bool, no_banner: bool) -> None:
             Panel(
                 "[bold]Welcome to Putty-ES[/bold]\n\n"
                 "Run [cyan]putty-es --help[/cyan] to see available commands.\n"
+                "Run [cyan]putty-es --gui[/cyan] or [cyan]putty-es gui[/cyan] to open the graphical interface.\n"
                 "Run [cyan]putty-es init[/cyan] to create your first configuration.\n"
                 "Run [cyan]putty-es ppi --help[/cyan] for the Python Package Implementor Ruler.",
                 title="Getting Started",
                 border_style="cyan",
             )
         )
+
+
+@main.command("gui")
+def gui_cmd() -> None:
+    """Launch the Putty-ES graphical user interface (with animated startup)."""
+    from putty_es.gui.app import launch_gui
+    launch_gui()
 
 
 @main.command()
