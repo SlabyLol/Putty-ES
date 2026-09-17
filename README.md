@@ -10,29 +10,33 @@
                     Elite Server Setup & Management
 ```
 
-**Putty-ES** is a modern, intelligent, modular open-source framework for automated server provisioning, configuration management, remote administration, **ppiRuler** and a beautiful **GUI with animated startup**.
+**Putty-ES** is a modern open-source framework for automated server provisioning, configuration management, offline PyPI packaging (**ppiRuler**) and a polished **GUI with animated startup**.
+
+[![Release](https://img.shields.io/github/v/release/SlabyLol/Putty-ES)](https://github.com/SlabyLol/Putty-ES/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ## Features
 
-### Core Server Management
-- Smart modular architecture (plugin-based)
+### Server Management
 - Configuration-driven (YAML / TOML)
-- Native PyPI support on remote servers
-- Beautiful CLI with banners & colors
+- Smart modules (12+ built-in)
 - SSH-first, idempotent operations
+- Beautiful Rich CLI
 
-### ppiRuler – Python Package Implementor Ruler
-- Download any package from PyPI
-- Transform into completely offline distribution
-- Windows EXE / launcher, Linux binary, HTML page, INI configs, DLL notes
-- Animated terminal startup sequence
+### ppiRuler
+- Download any PyPI package
+- Build offline artifacts: Windows EXE, Linux binary, HTML, INI, DLL notes
+- No runtime network calls to package servers
 
-### Modern GUI
-- **Animated splash screen** on every program start
-- Dark professional theme (CustomTkinter)
-- Tabs for Server Management + ppiRuler + About
-- One-click offline package building
-- Live log output
+### GUI
+- Animated splash screen on every start
+- Dark modern UI (CustomTkinter)
+- Tabs: Server Management · ppiRuler · About
+
+### Release pipeline
+- GitHub Actions builds Linux / Windows / macOS binaries with PyInstaller
+- Wheels + sdists
+- Automatic GitHub Releases on tags **and** manual `workflow_dispatch`
 
 ## Installation
 
@@ -40,73 +44,116 @@
 pip install putty-es
 ```
 
-Or from source:
+From source:
 
 ```bash
 git clone https://github.com/SlabyLol/Putty-ES.git
 cd Putty-ES
-pip install -e .
+pip install -e ".[full]"
+# or
+bash scripts/install.sh
 ```
 
-## Launch the GUI (with animated startup)
+Windows:
+
+```powershell
+.\scripts\install.ps1
+```
+
+## Quick Start
 
 ```bash
+# GUI (animated startup)
 putty-es --gui
-# or
 putty-es gui
-# or
 putty-es-gui
-```
 
-When you start the program a clean animated splash screen appears, then the main window opens.
-
-## CLI Quick Start
-
-```bash
-putty-es --help
+# CLI
 putty-es init
 putty-es apply configs/example-webserver.yaml
-putty-es ppi build requests
 putty-es modules
-```
 
-## ppiRuler Examples
-
-```bash
+# ppiRuler – offline package
 putty-es ppi build requests
-putty-es ppi build rich --version 13.7.1 -t exe -t html -t ini -o ./offline-rich
-putty-es ppi info
+putty-es ppi build rich -t exe -t html -t ini -o ./offline-rich
 ```
 
-## Architecture
+## Smart Modules
 
-```
-putty_es/
-├── cli.py                 # CLI + --gui flag
-├── core/                  # Config, Executor, Module loader
-├── modules/               # Smart server modules
-├── ppi_ruler/             # Offline package engine
-│   ├── core.py
-│   ├── builder.py
-│   └── animator.py        # Terminal animations
-└── gui/                   # Graphical interface
-    ├── splash.py          # Animated startup splash
-    └── app.py             # Main window (tabs)
-```
+| Module | Purpose |
+|--------|---------|
+| `packages` | apt / dnf / yum / apk / pacman |
+| `pypi` | Python packages on remote hosts |
+| `docker` | Docker Engine + images + containers |
+| `firewall` | ufw / firewalld |
+| `system` | hostname, timezone, services, sysctl |
+| `ssh` | keys + hardening |
+| `nginx` | sites & reverse proxies |
+| `users` | users, groups, sudo, SSH keys |
+| `files` | directories & file content |
+| `cron` | idempotent cron jobs |
+| `certbot` | Let's Encrypt SSL |
+| `monitoring` | tools + health script |
 
-## Auto Release
+See [docs/MODULES.md](docs/MODULES.md).
 
-Tag a version → GitHub Actions builds wheels, sdists and PyInstaller executables for Linux / Windows / macOS and creates a Release.
+## Example Configs
+
+- `configs/example-minimal.yaml`
+- `configs/example-webserver.yaml`
+- `configs/example-full-stack.yaml`
+- `configs/example-database.yaml`
+- `configs/example-docker-host.yaml`
+
+## Create a Release
+
+### Option A – Tag (recommended)
 
 ```bash
 git tag v0.3.0
 git push origin v0.3.0
 ```
 
+### Option B – Manual workflow
+
+1. Go to **Actions → Build & Release Putty-ES**
+2. Click **Run workflow**
+3. Optionally enter a version (e.g. `v0.3.0`)
+4. The release job now runs on both tags **and** `workflow_dispatch` (no longer skipped)
+
+Artifacts published:
+- `putty-es-linux-x64`
+- `putty-es-windows-x64.exe`
+- `putty-es-macos-x64`
+- GUI binaries (when available)
+- Python wheel + sdist
+
+## Project layout
+
+```
+Putty-ES/
+├── .github/workflows/
+│   ├── release.yml      # multi-OS build + GitHub Release
+│   └── ci.yml
+├── configs/             # example fleets
+├── docs/                # MODULES, PPIRULER, GUI
+├── scripts/             # install.sh, install.ps1, build_local.sh
+├── src/putty_es/
+│   ├── cli.py
+│   ├── core/
+│   ├── modules/         # 12 smart modules
+│   ├── ppi_ruler/
+│   └── gui/             # splash + main window
+├── tests/
+├── CHANGELOG.md
+├── LICENSE
+└── pyproject.toml
+```
+
 ## License
 
-MIT License – free for personal and commercial use.
+MIT – free for personal and commercial use.
 
 ---
 
-**Putty-ES** – Server setup, offline packages and a polished GUI with real startup animation.
+**Putty-ES** – servers, offline packages, GUI and real releases.
