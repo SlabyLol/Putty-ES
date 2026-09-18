@@ -1,0 +1,43 @@
+# Putty-Fire protection example
+name: protected-server
+description: Server hardened with Putty-Fire
+
+hosts:
+  - name: secure-01
+    hostname: 192.168.1.50
+    user: root
+    key: ~/.ssh/id_ed25519
+
+modules:
+  - name: packages
+    packages:
+      - ufw
+      - fail2ban
+      - curl
+      - htop
+
+  - name: putty-fire
+    enable: true
+    level: standard          # minimal | standard | strict
+    ssh_port: 22
+    allow_ports:
+      - 22/tcp
+      - 80/tcp
+      - 443/tcp
+    deny_ports: []
+    ban_ssh_bruteforce: true
+    fail2ban: true
+    sysctl_harden: true
+    disable_password_auth: false   # set true only if key login works
+    show_banner: true              # shows "Protected by Putty-Fire"
+
+  - name: firewall
+    enable: true
+    allow:
+      - 22/tcp
+      - 80/tcp
+      - 443/tcp
+
+  - name: ssh
+    harden: false
+    authorized_keys: []

@@ -7,19 +7,18 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version tag (e.g. v0.3.0). Used for GitHub Release name when not on a tag."
+        description: "Version tag (e.g. v0.3.1)"
         required: false
         default: ""
       prerelease:
-        description: "Mark GitHub Release as pre-release"
+        description: "Mark as pre-release"
         type: boolean
         default: false
       publish_pypi:
-        description: "Also publish to PyPI (Trusted Publisher)"
+        description: "Publish to PyPI (Trusted Publisher)"
         type: boolean
         default: true
 
-# Required for GitHub Release + PyPI Trusted Publishing (OIDC)
 permissions:
   contents: write
   id-token: write
@@ -40,131 +39,80 @@ jobs:
             artifact_name: putty-es-macos-x64
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
 
-      - name: Install build tools
+      - name: Install tools
         run: |
           python -m pip install --upgrade pip setuptools wheel build
-          pip install -e ".[full,dev]" || pip install -e "."
-          pip install pyinstaller
+          pip install -e "." || true
+          pip install pyinstaller customtkinter rich click pyyaml paramiko pydantic fabric
 
-      - name: Build Python package (sdist + wheel)
+      - name: Build sdist + wheel
         run: python -m build
 
-      - name: Build CLI executable (PyInstaller)
+      - name: PyInstaller CLI
         shell: bash
         run: |
-          pyinstaller --onefile --clean --noconfirm \
-            --name putty-es \
-            --paths src \
-            --hidden-import=putty_es \
-            --hidden-import=putty_es.cli \
-            --hidden-import=putty_es.core \
-            --hidden-import=putty_es.core.config \
-            --hidden-import=putty_es.core.executor \
-            --hidden-import=putty_es.core.module_loader \
-            --hidden-import=putty_es.modules \
-            --hidden-import=putty_es.modules.base \
-            --hidden-import=putty_es.modules.packages \
-            --hidden-import=putty_es.modules.pypi \
-            --hidden-import=putty_es.modules.docker \
-            --hidden-import=putty_es.modules.firewall \
-            --hidden-import=putty_es.modules.system \
-            --hidden-import=putty_es.modules.ssh \
-            --hidden-import=putty_es.modules.nginx \
-            --hidden-import=putty_es.modules.users \
-            --hidden-import=putty_es.modules.files \
-            --hidden-import=putty_es.modules.cron \
-            --hidden-import=putty_es.modules.certbot \
-            --hidden-import=putty_es.modules.monitoring \
-            --hidden-import=putty_es.ppi_ruler \
-            --hidden-import=putty_es.ppi_ruler.core \
-            --hidden-import=putty_es.ppi_ruler.builder \
-            --hidden-import=putty_es.ppi_ruler.animator \
-            --hidden-import=putty_es.gui \
-            --hidden-import=putty_es.gui.app \
-            --hidden-import=putty_es.gui.splash \
-            --collect-all customtkinter \
-            --collect-all rich \
-            --collect-all click \
+          pyinstaller --onefile --clean --noconfirm --name putty-es --paths src \
+            --hidden-import=putty_es --hidden-import=putty_es.cli \
+            --hidden-import=putty_es.modules.putty_fire \
+            --collect-all customtkinter --collect-all rich \
             src/putty_es/cli.py || true
 
-      - name: Build GUI executable (PyInstaller)
+      - name: PyInstaller GUI
         shell: bash
         run: |
-          pyinstaller --onefile --clean --noconfirm --windowed \
-            --name putty-es-gui \
-            --paths src \
-            --hidden-import=putty_es \
-            --hidden-import=putty_es.gui \
-            --hidden-import=putty_es.gui.app \
-            --hidden-import=putty_es.gui.splash \
-            --hidden-import=putty_es.ppi_ruler \
-            --hidden-import=putty_es.core \
-            --collect-all customtkinter \
-            --collect-all rich \
-            src/putty_es/gui/app.py || true
+          pyinstaller --onefile --clean --noconfirm --windowed --name putty-es-gui --paths src \
+            --collect-all customtkinter src/putty_es/gui/app.py || true
 
-      - name: Prepare artifact folder
+      - name: Pack artifacts
         shell: bash
         run: |
           mkdir -p release-assets
-          if [ -f "dist/putty-es" ]; then cp dist/putty-es release-assets/${{ matrix.artifact_name }}; fi
-          if [ -f "dist/putty-es.exe" ]; then cp dist/putty-es.exe release-assets/${{ matrix.artifact_name }}.exe; fi
-          if [ -f "dist/putty-es-gui" ]; then cp dist/putty-es-gui release-assets/${{ matrix.artifact_name }}-gui; fi
-          if [ -f "dist/putty-es-gui.exe" ]; then cp dist/putty-es-gui.exe release-assets/${{ matrix.artifact_name }}-gui.exe; fi
-          # Python packages (wheel + sdist) – collected from every OS, Ubuntu is enough
+          [ -f dist/putty-es ] && cp dist/putty-es release-assets/${{ matrix.artifact_name }}
+          [ -f dist/putty-es.exe ] && cp dist/putty-es.exe release-assets/${{ matrix.artifact_name }}.exe
+          [ -f dist/putty-es-gui ] && cp dist/putty-es-gui release-assets/${{ matrix.artifact_name }}-gui
+          [ -f dist/putty-es-gui.exe ] && cp dist/putty-es-gui.exe release-assets/${{ matrix.artifact_name }}-gui.exe
           cp dist/*.whl release-assets/ 2>/dev/null || true
           cp dist/*.tar.gz release-assets/ 2>/dev/null || true
-          ls -la release-assets/ || true
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
           path: release-assets/
           if-no-files-found: warn
-          retention-days: 14
 
-  # ──────────────────────────────────────────────
-  # GitHub Release (binaries + wheels)
-  # ──────────────────────────────────────────────
   github-release:
-    name: Create GitHub Release
+    name: GitHub Release
     needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
 
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      - name: Flatten release files
+      - name: Flatten (dedupe)
         shell: bash
         run: |
           mkdir -p final
-          find artifacts -type f -exec cp -n {} final/ \; 2>/dev/null || find artifacts -type f -exec cp {} final/ \;
-          echo "=== Release files ==="
+          # Prefer unique basenames; large binaries last-write wins is ok
+          find artifacts -type f | while read f; do
+            bn=$(basename "$f")
+            cp -f "$f" "final/$bn"
+          done
           ls -lah final/
-          echo "====================="
 
-      - name: Determine tag name
+      - name: Tag name
         id: tag
         shell: bash
         run: |
@@ -173,10 +121,11 @@ jobs:
           elif [[ -n "${{ github.event.inputs.version }}" ]]; then
             echo "name=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
           else
-            echo "name=v0.3.0" >> $GITHUB_OUTPUT
+            echo "name=v0.3.1" >> $GITHUB_OUTPUT
           fi
 
-      - name: Create GitHub Release
+      # Retry-friendly release: smaller batches reduce Unicorn/timeouts
+      - name: Create / update release (metadata first)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.name }}
@@ -184,76 +133,55 @@ jobs:
           body: |
             ## Putty-ES ${{ steps.tag.outputs.name }}
 
-            Elite Server Setup & Management + ppiRuler + GUI
+            + **Putty-Fire** security layer (Protected by Putty-Fire)
+            + ppiRuler, GUI, server modules
 
-            ### Install from PyPI
             ```bash
             pip install putty-es
+            putty-es fire activate --host YOUR_SERVER
             ```
-
-            ### Downloads
-            - Linux / Windows / macOS standalone binaries
-            - GUI builds (where available)
-            - Python wheel + sdist
-
-            ### Features
-            - Server provisioning over SSH
-            - 12+ smart modules
-            - ppiRuler – offline PyPI package transformation
-            - Modern GUI with animated splash screen
-          files: final/*
           draft: false
           prerelease: ${{ github.event.inputs.prerelease || false }}
           generate_release_notes: true
           fail_on_unmatched_files: false
+          # Upload only packages first (small) – binaries in next step if needed
+          files: |
+            final/*.whl
+            final/*.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # ──────────────────────────────────────────────
-  # Publish to PyPI via Trusted Publishing (OIDC)
-  # Matches pending publisher:
-  #   Project: putty-es
-  #   Owner/Repo: SlabyLol/Putty-ES
-  #   Workflow: release.yml
-  #   Environment: (any)
-  # ──────────────────────────────────────────────
+      - name: Upload binaries to release
+        uses: softprops/action-gh-release@v2
+        continue-on-error: true
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          files: |
+            final/putty-es-*
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   publish-pypi:
     name: Publish to PyPI
     needs: build
     runs-on: ubuntu-latest
-    # Only on version tags (safer) OR when workflow_dispatch with publish_pypi=true
     if: |
       startsWith(github.ref, 'refs/tags/v') ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.publish_pypi == 'true')
-
-    # id-token: write is required for OIDC Trusted Publishing
     permissions:
       id-token: write
       contents: read
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-      - name: Install build tools
-        run: |
+      - run: |
           python -m pip install --upgrade pip build
-          pip install build
-
-      - name: Build clean sdist + wheel
-        run: |
           python -m build
           ls -la dist/
-
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+      - uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          # Trusted Publishing – no password / token needed
-          # Attests packages and uploads via OIDC
           verbose: true
           print-hash: true
