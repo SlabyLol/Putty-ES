@@ -1,0 +1,55 @@
+name: app-stack
+description: App server with nginx, python, redis, putty-fire
+
+hosts:
+  - name: app-01
+    hostname: 10.0.0.10
+    user: root
+    key: ~/.ssh/id_ed25519
+
+modules:
+  - name: packages
+    packages: [curl, git, nginx, python3, python3-pip, python3-venv, redis-server, ufw, fail2ban]
+
+  - name: putty-fire
+    enable: true
+    level: standard
+    allow_ports: ["22/tcp", "80/tcp", "443/tcp"]
+    show_banner: true
+
+  - name: swap
+    size: 2G
+
+  - name: python-env
+    path: /opt/app/venv
+    requirements: [fastapi, uvicorn, gunicorn, redis]
+
+  - name: redis
+    bind: 127.0.0.1
+
+  - name: nginx
+    sites:
+      - name: app
+        server_name: app.example.com
+        proxy_pass: http://127.0.0.1:8000
+
+  - name: systemd
+    units:
+      - name: app
+        description: App API
+        exec_start: /opt/app/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
+        user: www-data
+
+  - name: certbot
+    email: admin@example.com
+    domains: [app.example.com]
+
+  - name: backup
+    paths: [/opt/app, /etc/nginx]
+    schedule: "0 3 * * *"
+
+  - name: monitoring
+  - name: logrotate
+    jobs:
+      - name: app
+        path: /var/log/app/*.log

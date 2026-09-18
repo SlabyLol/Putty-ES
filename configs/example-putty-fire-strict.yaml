@@ -1,0 +1,40 @@
+name: fortress
+description: Strict Putty-Fire locked-down host
+
+hosts:
+  - name: fortress-01
+    hostname: 10.0.0.5
+    user: root
+    key: ~/.ssh/id_ed25519
+
+modules:
+  - name: packages
+    packages: [ufw, fail2ban, curl, htop, unattended-upgrades]
+
+  - name: putty-fire
+    enable: true
+    level: strict
+    ssh_port: 22
+    allow_ports: ["22/tcp"]
+    ban_ssh_bruteforce: true
+    fail2ban: true
+    sysctl_harden: true
+    disable_password_auth: true
+    show_banner: true
+
+  - name: ufw-profiles
+    profile: locked
+
+  - name: fail2ban-extra
+    nginx: false
+    recidive: true
+
+  - name: unattended-upgrades
+
+  - name: sshd-banner
+    text: |
+      AUTHORIZED ACCESS ONLY
+      Protected by Putty-Fire
+
+  - name: audit
+  - name: report

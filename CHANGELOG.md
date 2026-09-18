@@ -1,33 +1,27 @@
 # Changelog
 
-All notable changes to Putty-ES are documented in this file.
+## [0.3.1] – 2026-09-18
+
+### Added – Putty-Fire
+- Full **putty-fire** module: firewall, SSH harden, fail2ban, sysctl, status banner
+- CLI: `putty-es fire activate` / `putty-es fire status`
+- On activation: **Protected by Putty-Fire** (MOTD, `/etc/putty-fire/STATUS`, `putty-fire-status`)
+
+### Added – Many modules
+backup, swap, timezone, motd, logrotate, systemd, nodejs, redis, postgres, mysql,
+ufw-profiles, audit, wireguard, fail2ban-extra, unattended-upgrades, hostname,
+caddy, git-deploy, python-env, healthcheck, cleanup, sshd-banner, docker-compose,
+limits, kernel-modules, ssh-keys-sync, report, and more
+
+### Fixed
+- GitHub Release uploads split (wheels first, binaries second) to reduce Unicorn timeouts
+- PyPI Trusted Publishing job retained
 
 ## [0.3.0] – 2026-09-17
-
-### Added
-- **Modern GUI** with CustomTkinter (dark theme)
-- **Animated splash screen** on every GUI start
-- **ppiRuler** – Python Package Implementor Ruler (offline package builder)
-- New smart modules: `nginx`, `users`, `files`, `cron`, `certbot`, `monitoring`
-- GitHub Actions release pipeline (Linux / Windows / macOS + PyInstaller)
-- Multiple example configurations
-- Tests, docs, installers, CONTRIBUTING improvements
-
-### Changed
-- Version bump to 0.3.0
-- Improved CLI help and entry points (`putty-es`, `putty-es-gui`)
+- GUI + animated splash, ppiRuler, initial release pipeline
 
 ## [0.2.0] – 2026-09-17
-
-### Added
-- ppiRuler core engine, builder, animator
-- CLI commands `putty-es ppi build` / `ppi info`
+- ppiRuler core
 
 ## [0.1.0] – 2026-09-17
-
-### Added
-- Initial release
-- Core server management (config, executor, modules)
-- Modules: packages, pypi, docker, firewall, system, ssh
-- YAML/TOML configuration support
-- Beautiful Rich CLI banner
+- Initial core modules

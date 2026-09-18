@@ -1,0 +1,29 @@
+name: db-node
+hosts:
+  - name: db-01
+    hostname: 10.0.0.20
+    user: root
+    key: ~/.ssh/id_ed25519
+
+modules:
+  - name: putty-fire
+    enable: true
+    level: standard
+    allow_ports: ["22/tcp", "5432/tcp"]
+    show_banner: true
+
+  - name: ufw-profiles
+    profile: db
+
+  - name: postgres
+    databases:
+      - name: appdb
+        user: app
+        password: change-me-strong
+
+  - name: backup
+    paths: [/var/lib/postgresql]
+    destination: /var/backups/pg
+
+  - name: monitoring
+  - name: audit
